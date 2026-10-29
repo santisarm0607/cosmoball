@@ -84,6 +84,15 @@ const DIFICULTADES = {
 let dificultad = DIFICULTADES.normal;
 
 const COLORES_NAVE   = ["#ff3cac", "#38e8ff", "#ffd23f", "#ff7b3c", "#b98cff", "#7dff6a"];
+
+// 🌐 MULTIJUGADOR EN LÍNEA (cada jugador en su aparato)
+// Todo el código de la conexión está en js/enlinea.js. Aquí solo queda este
+// objeto para que juego.js sepa si se está jugando en línea:
+//   activo: true mientras hay una sala abierta
+//   rol:    "anfitrion" (creó la sala y corre el juego) o "invitado" (se unió)
+//   yo:     la nave de este aparato (p1 para el anfitrión, p2 para el invitado)
+// Las líneas marcadas con 🌐 en este archivo son los "ganchos" del modo en línea.
+const enLinea = { activo: false, rol: null, yo: null };
 const COLOR_ROBOT = "#7dff6a";
 
 // =====================================================================
@@ -204,7 +213,7 @@ function dibujarFondo() {
 // =====================================================================
 function mostrarPantalla(id) {
   ["pantallaTitulo", "pantallaModo", "pantallaConfig", "pantallaFin", "pantallaMarcador",
-   "pantallaSesion", "pantallaAyuda", "pantallaCreditos", "pantallaLogros"].forEach(p => $(p).classList.add("oculta"));
+   "pantallaSesion", "pantallaAyuda", "pantallaCreditos", "pantallaLogros", "pantallaEnLinea"].forEach(p => $(p).classList.add("oculta"));
   if (id) $(id).classList.remove("oculta");
   // En la pantalla de título no se repite el nombre de arriba
   document.body.classList.toggle("en-titulo", id === "pantallaTitulo");
@@ -464,6 +473,8 @@ $("botonOtraVez").addEventListener("click", nuevaPartida);
 $("botonInicio").addEventListener("click", () => { estado = "menu"; limpiarTodo(); mostrarPantalla("pantallaTitulo"); });
 
 function nuevaPartida() {
+  // 🌐 El invitado no arranca partidas: le pide al anfitrión que empiece otra
+  if (enLinea.activo && enLinea.rol === "invitado") { enLinea.pedirOtraPartida(); return; }
   celebrar = false;
   iniciarMusica();
   limpiarTodo();
@@ -482,6 +493,7 @@ function nuevaPartida() {
   estado = "jugando";
   prepararSaque(p1);
   mostrarConsejo("mover", textoMover());
+  if (enLinea.activo) enLinea.alEmpezar();   // 🌐 avisa al invitado que empezó la partida
 }
 
 function limpiarTodo() {
@@ -514,6 +526,11 @@ function terminarPartida(ganador) {
     titulo = "¡Ganó " + ganador.nombre + "!";
     texto = ganador.nombre + " venció a " + perdedor.nombre + " " + marcador +
             ". El peloteo más largo fue de " + mejorRacha + " golpes.";
+    // 🌐 En línea cada uno ve la partida desde su lado
+    if (enLinea.activo) {
+      gano = ganador === enLinea.yo;
+      if (gano) titulo = "¡Ganaste, " + ganador.nombre + "!";
+    }
   }
   $("tituloFin").textContent = titulo;
   $("textoFin").textContent = texto;
@@ -545,8 +562,8 @@ function terminarPartida(ganador) {
 //      en Claude, el dueño de la página (los demás no ven el botón);
 //      en tu computador o celular, quien sepa la CLAVE_ADMIN.
 // =====================================================================
-const BONO_VICTORIA = { facil: 300, normal: 600, dificil: 1000, dos: 500 };
-const NOMBRES_CATEGORIA = { todos: "Todos", facil: "Fácil", normal: "Normal", dificil: "Difícil", dos: "2 jugadores" };
+const BONO_VICTORIA = { facil: 300, normal: 600, dificil: 1000, dos: 500, linea: 500 };   // 🌐 linea = en línea
+const NOMBRES_CATEGORIA = { todos: "Todos", facil: "Fácil", normal: "Normal", dificil: "Difícil", dos: "2 jugadores", linea: "En línea" };
 const CLAVE_PARTIDAS = "galaxyPongPartidas";
 const CLAVE_PILOTOS  = "galaxyPongPilotos";
 const CLAVE_SESION   = "galaxyPongSesion";
@@ -650,7 +667,7 @@ mostrarEstadoSesion();
 // ---------- 🏆 Registros de partidas ----------
 function calcularPuntaje(p, gano) {
   let bono = 0;
-  if (gano) bono = modo === 2 ? BONO_VICTORIA.dos : BONO_VICTORIA[nivelElegido];
+  if (gano) bono = enLinea.activo ? BONO_VICTORIA.linea : modo === 2 ? BONO_VICTORIA.dos : BONO_VICTORIA[nivelElegido];   // 🌐
   const puntosGoles = contrarreloj ? p.puntos * 100 : Math.round(p.puntos * 500 / GOLES_PARA_TERMINAR);
   return puntosGoles + p.golpes * 2 + bono;
 }
@@ -755,6 +772,9 @@ function mostrarConsejo(id, texto) {
   consejosEnFila.push(texto);
 }
 function textoMover() {
+  // 🌐 En línea cada uno mueve su nave con lo que quiera
+  if (enLinea.activo) return esCelular ? "Usa los botones ▲ ▼ o arrastra el dedo para mover tu nave"
+                                      : "Mueve tu nave con el mouse, W / S o las flechas ↑ ↓";
   if (esCelular) return modo === 2 ? "Cada uno usa sus botones ▲ ▼ (o el dedo en su mitad)" : "Usa los botones ▲ ▼ o arrastra el dedo para mover tu nave";
   return modo === 2 ? "Jugador 1: W / S  ·  Jugador 2: flechas ↑ ↓" : "Mueve tu nave con el mouse o las flechas ↑ ↓";
 }
@@ -862,10 +882,12 @@ $("botonLogros").addEventListener("click", mostrarLogros);
 $("botonVolverLogros").addEventListener("click", () => mostrarPantalla("pantallaTitulo"));
 
 async function guardarPuntajesDeLaPartida(ganador) {
-  const cat = modo === 2 ? "dos" : nivelElegido;
+  const cat = enLinea.activo ? "linea" : modo === 2 ? "dos" : nivelElegido;   // 🌐
   const antes = (await leerRegistros()).lista;
-  const humanos = jugadores.filter(p => !p.esRobot);
+  // 🌐 En línea cada aparato guarda SOLO a su piloto (el rival lo guarda en el suyo)
+  const humanos = jugadores.filter(p => !p.esRobot && (!enLinea.activo || p === enLinea.yo));
   const textos = [], medallas = [], navesNuevas = [];
+  const conNombre = modo === 2 && !enLinea.activo;   // 🌐 en línea solo se muestra lo mío
   for (const p of humanos) {
     const gano = p === ganador;
     const r = { nombre: p.nombre, cat, puntaje: calcularPuntaje(p, gano), gano, goles: p.puntos,
@@ -877,18 +899,18 @@ async function guardarPuntajesDeLaPartida(ganador) {
     // Si es el piloto con sesión iniciada, se recuerda su último color
     const ses = sesionActual();
     if (ses && mismoNombre(ses.nombre, p.nombre)) guardarLS(CLAVE_SESION, { nombre: ses.nombre, color: p.color, forma: p.forma });
-    let t = (modo === 2 ? p.nombre + ": " : "Tu puntaje: ") + r.puntaje + " pts";
+    let t = (conNombre ? p.nombre + ": " : "Tu puntaje: ") + r.puntaje + " pts";
     if (r.puntaje > mejorAntes) t += " 🏆 ¡RÉCORD DEL MARCADOR!";
     else if (r.puntaje > mejorMio && mejorMio > 0) t += " ⭐ ¡Récord personal!";
     textos.push(t);
     // 🏅 Medallas nuevas
     const partidas = antes.filter(x => mismoNombre(String(x.nombre), p.nombre)).length + 1;
     const medallasAntes = medallasDe(p.nombre);
-    revisarLogros(p, gano, partidas).forEach(l => medallas.push((modo === 2 ? p.nombre + ": " : "") + l.icono + " " + l.nombre));
+    revisarLogros(p, gano, partidas).forEach(l => medallas.push((conNombre ? p.nombre + ": " : "") + l.icono + " " + l.nombre));
     // 🚀 ¿Desbloqueó una nave nueva?
     const medallasAhora = medallasDe(p.nombre);
     NAVES.filter(n => n.medallas > medallasAntes && n.medallas <= medallasAhora)
-         .forEach(n => navesNuevas.push((modo === 2 ? p.nombre + ": " : "") + n.nombre));
+         .forEach(n => navesNuevas.push((conNombre ? p.nombre + ": " : "") + n.nombre));
   }
   if (estado === "fin") {
     $("puntajeFin").textContent = textos.join("   |   ");
@@ -1039,6 +1061,8 @@ let audio = null;
 let silencio = false;
 try { silencio = localStorage.getItem("galaxyPongSilencio") === "1"; } catch (e) {}
 function sonido(frecuencia, duracion = 0.08, tipo = "square", volumen = 0.15, frecuenciaFinal) {
+  // 🌐 El anfitrión anota cada sonido para que también suene en el aparato del invitado
+  if (enLinea.activo && enLinea.rol === "anfitrion") enLinea.sonidos.push([frecuencia, duracion, tipo, volumen, frecuenciaFinal]);
   if (silencio) return;     // 🔇 sonido apagado
   try {
     if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
@@ -1066,9 +1090,10 @@ function posicionEnCanvas(clientX, clientY) {
 
 // Mouse: solo en modo 1 jugador
 canvas.addEventListener("mousemove", e => {
-  if (modo === 2) return;
-  p1.conDedo = false;
-  p1.objetivoY = posicionEnCanvas(e.clientX, e.clientY).y - p1.h / 2;
+  if (modo === 2 && !enLinea.activo) return;
+  const yo = enLinea.activo ? enLinea.yo : p1;     // 🌐 en línea, el mouse mueve MI nave
+  yo.conDedo = false;
+  yo.objetivoY = posicionEnCanvas(e.clientX, e.clientY).y - yo.h / 2;
 });
 
 // Dedo: en 1 jugador sirve tocar en cualquier parte.
@@ -1078,7 +1103,8 @@ function manejarToques(e) {
   for (const t of e.touches) {
     const pos = posicionEnCanvas(t.clientX, t.clientY);
     let p = p1;
-    if (modo === 2) p = pos.x < ANCHO / 2 ? p1 : p2;
+    if (enLinea.activo) p = enLinea.yo;            // 🌐 en línea, toda la pantalla es para MI nave
+    else if (modo === 2) p = pos.x < ANCHO / 2 ? p1 : p2;
     if (!p.esRobot) { p.objetivoY = pos.y - p.h / 2; p.conDedo = true; }
   }
 }
@@ -1102,6 +1128,15 @@ window.addEventListener("keyup", e => {
 });
 
 function moverConTeclas() {
+  // 🌐 En línea: W/S, flechas y botones ▲ ▼ mueven MI nave (la del rival llega por internet)
+  if (enLinea.activo) {
+    const yo = enLinea.yo, b = botonesApretados[1];
+    if (teclas["w"] || teclas["ArrowUp"])   yo.objetivoY -= VEL_TECLAS;
+    if (teclas["s"] || teclas["ArrowDown"]) yo.objetivoY += VEL_TECLAS;
+    if (b.arriba) { yo.objetivoY = Math.min(yo.objetivoY, yo.y) - VEL_BOTONES; yo.conDedo = true; }
+    if (b.abajo)  { yo.objetivoY = Math.max(yo.objetivoY, yo.y) + VEL_BOTONES; yo.conDedo = true; }
+    return;
+  }
   // En 1 jugador: flechas o W/S mueven a p1. En 2 jugadores: W/S = p1, flechas = p2
   const arriba1 = teclas["w"] || (modo !== 2 && teclas["ArrowUp"]);
   const abajo1  = teclas["s"] || (modo !== 2 && teclas["ArrowDown"]);
@@ -1763,15 +1798,33 @@ function actualizarLluvia() {
 //  EFECTOS
 // =====================================================================
 function chispas(x, y, color, cantidad = 14) {
+  // 🌐 El anfitrión anota las chispas para que el invitado también las vea
+  if (enLinea.activo && enLinea.rol === "anfitrion") enLinea.chispas.push([Math.round(x), Math.round(y), color, cantidad]);
   for (let i = 0; i < cantidad; i++) {
     particulas.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, vida: 1, color });
   }
+}
+
+// 🎆 Fuegos artificiales mientras se ve la pantalla de victoria
+// (función aparte para que el invitado del modo en línea también los vea)
+function lanzarFuegos() {
+  if (!(estado === "fin" && celebrar && cuadro % 18 === 0)) return;
+  const colores = ["#ff3cac", "#38e8ff", "#ffd23f", "#7dff6a", "#b98cff", "#ff7b3c"];
+  const x = 120 + Math.random() * (ANCHO - 240), y = 70 + Math.random() * (ALTO - 220);
+  for (let i = 0; i < 46; i++) {
+    const ang = Math.random() * Math.PI * 2, v = 2 + Math.random() * 4;
+    particulas.push({ x, y, vx: Math.cos(ang) * v, vy: Math.sin(ang) * v, vida: 1.6, tam: 5,
+                      color: colores[Math.floor(Math.random() * colores.length)] });
+  }
+  if (cuadro % 36 === 0) sonido(180 + Math.random() * 200, 0.25, "sine", 0.06, 60);
 }
 
 // =====================================================================
 //  ACTUALIZAR (cada cuadro, ~60 veces por segundo)
 // =====================================================================
 function actualizar() {
+  // 🌐 El invitado NO simula la física: dibuja lo que le manda el anfitrión (js/enlinea.js)
+  if (enLinea.activo && enLinea.rol === "invitado") { enLinea.actualizarInvitado(); return; }
   cuadro++;
   moverConTeclas();
   jugadores.forEach(p => {
@@ -1795,17 +1848,7 @@ function actualizar() {
   }
   if (flashGol && --flashGol.vida <= 0) flashGol = null;
   if (estado === "jugando" || estado === "gol") actualizarConsejos();
-  // 🎆 Fuegos artificiales mientras se ve la pantalla de victoria
-  if (estado === "fin" && celebrar && cuadro % 18 === 0) {
-    const colores = ["#ff3cac", "#38e8ff", "#ffd23f", "#7dff6a", "#b98cff", "#ff7b3c"];
-    const x = 120 + Math.random() * (ANCHO - 240), y = 70 + Math.random() * (ALTO - 220);
-    for (let i = 0; i < 46; i++) {
-      const ang = Math.random() * Math.PI * 2, v = 2 + Math.random() * 4;
-      particulas.push({ x, y, vx: Math.cos(ang) * v, vy: Math.sin(ang) * v, vida: 1.6, tam: 5,
-                        color: colores[Math.floor(Math.random() * colores.length)] });
-    }
-    if (cuadro % 36 === 0) sonido(180 + Math.random() * 200, 0.25, "sine", 0.06, 60);
-  }
+  lanzarFuegos();   // 🎆 fuegos artificiales en la pantalla de victoria
   if (circulo && circulo.brillo > 0) circulo.brillo *= 0.9;
   if (estado !== "jugando") return;
 
@@ -2723,6 +2766,7 @@ function dibujar() {
     ctx.fillText(aviso.texto, ANCHO / 2, 200);
     ctx.restore();
   }
+  if (enLinea.activo) enLinea.dibujarExtra();   // 🌐 cartelito "En línea" y avisos de conexión
 }
 
 function cartel(titulo, sub) {
@@ -2755,6 +2799,8 @@ botonPausa.addEventListener("click", () => {
 // ---------- ⏸ Menú de pausa ----------
 let estadoAntesDePausa = "jugando";
 function alternarPausa() {
+  // 🌐 El invitado le pide la pausa al anfitrión (la pausa es para los dos)
+  if (enLinea.activo && enLinea.rol === "invitado") { enLinea.pedirPausa(); return; }
   if (estado === "jugando" || estado === "gol") {
     estadoAntesDePausa = estado;          // también se puede pausar durante el cartel de gol
     estado = "pausa";
@@ -2762,6 +2808,7 @@ function alternarPausa() {
   } else if (estado === "pausa") reanudar();
 }
 function reanudar() {
+  if (enLinea.activo && enLinea.rol === "invitado") { enLinea.pedirPausa(); return; }   // 🌐
   estado = estadoAntesDePausa;
   $("pantallaPausa").classList.add("oculta");
 }
@@ -2782,7 +2829,7 @@ function actualizarBotones() {
   const enJuego = estado === "jugando" || estado === "pausa" || estado === "gol";
   // Clases en el <body> para que el CSS muestre los botones ▲ ▼ solo jugando
   document.body.classList.toggle("en-juego", enJuego);
-  document.body.classList.toggle("modo2", modo === 2);
+  document.body.classList.toggle("modo2", modo === 2 && !enLinea.activo);   // 🌐 en línea solo se ven mis botones
   $("grupo1").style.setProperty("--color", p1.color);
   $("grupo2").style.setProperty("--color", p2.color);
   botonPausa.classList.toggle("oculta", !enJuego);
@@ -2881,6 +2928,7 @@ function bucle(tiempo) {
     pasos++;
   }
   if (pasos === 5) acumulado = 0;      // si el aparato va muy lento, no se atrasa
+  if (enLinea.activo) enLinea.cadaCuadro();   // 🌐 manda/recibe lo que pasó en la cancha
   dibujar();
   actualizarBotones();
   requestAnimationFrame(bucle);

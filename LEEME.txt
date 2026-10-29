@@ -22,8 +22,9 @@ proyecto-ping-pong/
 ├── css/
 │   └── estilos.css -> Colores, botones y diseño (computador y celular)
 └── js/
-    └── juego.js    -> Toda la lógica: física, robot, poderes, marcador,
-                       sonidos y música
+    ├── juego.js    -> Toda la lógica: física, robot, poderes, marcador,
+    │                  sonidos y música
+    └── enlinea.js  -> Multijugador en línea (salas con código)
 
 CÓMO ABRIRLO
 ------------
@@ -44,14 +45,27 @@ CÓMO SE JUEGA
 - Contrarreloj (⏱ 1 min): gana quien meta más goles en 60 segundos. Si hay
   empate, sigue con "gol de oro": el próximo gol gana. Los goles valen 100.
 - Cada poder tiene su propio sonido.
-- Modos: 1 jugador (contra el robot alienígena), 2 jugadores o práctica
-  (contra una pared que siempre devuelve la pelota, sin goles ni marcador).
+- Modos: 1 jugador (contra el robot alienígena), 2 jugadores, EN LÍNEA o
+  práctica (contra una pared que siempre devuelve la pelota, sin goles ni
+  marcador).
 - Dificultad: Fácil, Normal o Difícil.
 - Controles:
     1 jugador: mouse o flechas ↑ ↓
     2 jugadores: Jugador 1 = W / S, Jugador 2 = flechas ↑ ↓
     Celular: botones ▲ ▼ o arrastrar el dedo
     Espacio o el botón ⏸ = menú de pausa (reanudar, reiniciar, salir)
+
+JUGAR EN LÍNEA (cada uno en su celular o computador)
+----------------------------------------------------
+1. Los dos: Play -> "🌐 En línea" y escriben su nombre.
+2. Uno toca "Crear sala". Le sale un código, por ejemplo COSMO-4821.
+3. El otro escribe los 4 números (4821) y toca "Unirme".
+4. El que creó la sala elige los goles y toca "Empezar partida".
+- Cada uno mueve su nave con el mouse, W / S, las flechas o el dedo.
+- Necesita internet. Funciona con la página publicada (GitHub Pages).
+  En la vista de prueba de Claude no funciona.
+- Para probarlo en un solo computador: con Live Server abre dos pestañas
+  con  html/index.html?red=local  y conéctalas con el código.
 
 PODERES
 -------

@@ -154,6 +154,7 @@
         <button class="pestana" data-cat="normal">Normal</button>
         <button class="pestana" data-cat="dificil">Difícil</button>
         <button class="pestana" data-cat="dos">2 jugadores</button>
+        <button class="pestana" data-cat="linea">🌐 En línea</button>
       </div>
       <ol id="tablaMarcador" class="tabla-marcador"></ol>
       <p id="notaMarcador" class="nota"></p>
@@ -174,10 +175,46 @@
         <button id="modo1" class="boton grande">1 jugador</button>
         <button id="modo2" class="boton grande">2 jugadores</button>
       </div>
+      <button id="modoLinea" class="boton grande en-linea">🌐 En línea</button>
       <button id="modo3" class="boton secundario">🎯 Modo práctica</button>
       <p class="nota">1 jugador: contra el robot alienígena · 2 jugadores: los dos en el mismo aparato<br>
+        En línea: cada uno en su celular o computador, con un código de sala<br>
         Práctica: contra una pared que siempre devuelve la pelota (sin goles ni marcador)</p>
       <button id="botonAtrasModo" class="boton secundario">← Atrás</button>
+    </div>
+
+    <!-- ===== 🌐 EN LÍNEA: crear una sala o unirse con un código (lo maneja js/enlinea.js) ===== -->
+    <div id="pantallaEnLinea" class="pantalla oculta">
+      <h2>🌐 Jugar en línea</h2>
+
+      <!-- Paso 1: nombre, color y elegir crear o unirse -->
+      <div id="lineaInicio" class="caja">
+        <label for="nombreLinea">Tu nombre de piloto</label>
+        <input id="nombreLinea" class="nombre" type="text" maxlength="12" placeholder="Nombre" autocomplete="off">
+        <div id="coloresLinea" class="colores"></div>
+        <button id="botonCrearSala" class="boton grande">🛸 Crear sala</button>
+        <span class="etiqueta">¿Te pasaron un código?</span>
+        <div class="botones">
+          <input id="codigoSala" class="nombre codigo" type="text" inputmode="numeric" maxlength="10" placeholder="Ej: 4821" autocomplete="off" aria-label="Código de la sala">
+          <button id="botonUnirse" class="boton">Unirme</button>
+        </div>
+      </div>
+
+      <!-- Paso 2: la sala (código, estado de la conexión y, para el anfitrión, empezar) -->
+      <div id="lineaSala" class="caja oculta">
+        <span id="tituloCodigo" class="etiqueta">Código de tu sala</span>
+        <p id="codigoGrande" class="codigo-grande" aria-live="polite"></p>
+        <button id="botonCopiarCodigo" class="boton secundario">📋 Copiar código</button>
+        <p id="estadoLinea" class="estado-linea" aria-live="polite"></p>
+        <div id="lineaConfig" class="caja oculta">
+          <span class="etiqueta">Goles para ganar (o contrarreloj)</span>
+          <div id="golesLinea" class="niveles"></div>
+          <button id="botonEmpezarLinea" class="boton grande">▶ Empezar partida</button>
+        </div>
+      </div>
+
+      <p id="avisoLinea" class="nota-forma" aria-live="polite"></p>
+      <button id="botonVolverLinea" class="boton secundario">← Atrás</button>
     </div>
 
     <!-- ===== PASO 2: NOMBRES Y COLORES ===== -->
@@ -261,5 +298,7 @@
   </div>
 
 <script src="../js/juego.js"></script>
+<!-- 🌐 Multijugador en línea (carga la librería PeerJS solo cuando se necesita) -->
+<script src="../js/enlinea.js"></script>
 </body>
 </html>

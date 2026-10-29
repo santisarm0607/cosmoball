@@ -422,3 +422,23 @@ body.en-titulo h1 { visibility: hidden; }
   .forma { width: 38px; height: 38px; }
   .forma canvas { width: 32px; height: 32px; }
 }
+
+/* ===================================================================
+   🌐 MULTIJUGADOR EN LÍNEA
+   =================================================================== */
+.boton.en-linea {               /* el botón "En línea" de la pantalla de modos */
+  background: linear-gradient(135deg, #1576c2, #7a3df0);   /* azul → morado: la letra blanca se lee bien (4.6:1) */
+  box-shadow: 0 0 18px rgba(56, 232, 255, .5);
+}
+.codigo { width: 11ch; text-align: center; letter-spacing: .15em; font-family: var(--titulo); font-size: 1.2rem; }
+.codigo-grande {                /* el código de la sala, bien grande para dictarlo */
+  font-family: var(--titulo); font-weight: 700;
+  font-size: clamp(2rem, 7vw, 3.4rem) !important; letter-spacing: .08em;
+  margin: 0 !important; max-width: none !important;
+  background: linear-gradient(90deg, var(--neon), var(--morado), var(--magenta), var(--naranja));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.estado-linea { color: #bfc4ff; min-height: 1.4em; text-align: center; }
+.estado-linea.conectado { color: #7dff6a; font-weight: 600; }
+#pantallaEnLinea .caja { gap: 10px; }
+#pantallaEnLinea .nota-forma { color: #ff9a3c; min-height: 1.2em; text-align: center; }
